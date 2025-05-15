@@ -49,8 +49,8 @@ def bp_alert():
     dev_sys = abs(user_sys - mean_sys) / (mean_sys + 1e-5)
     dev_dia = abs(user_dia - mean_dia) / (mean_dia + 1e-5)
 
-    # Generate alert if deviation exceeds threshold
-    alert = dev_sys > THRESHOLD or dev_dia > THRESHOLD
+    # Force alert to native bool
+    alert = bool(dev_sys > THRESHOLD or dev_dia > THRESHOLD)
 
     return jsonify({
         "mean_systolic": round(mean_sys, 2),
@@ -59,6 +59,7 @@ def bp_alert():
         "diastolic_deviation_percent": round(dev_dia * 100, 2),
         "alert": alert
     })
+
 
 if __name__ == "__main__":
     app.run(debug=True)
