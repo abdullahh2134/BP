@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 # Configuration
 WINDOW_SIZE = 10
-THRESHOLD = 0.15
+THRESHOLD = 0.15  # 15% deviation threshold
 
 # Initialize BP history with default values
 bp_data = pd.DataFrame([{
@@ -27,7 +27,10 @@ def bp_alert():
     user_sys = data.get("systolic_bp")
     user_dia = data.get("diastolic_bp")
 
-    # Add new reading
+    if user_sys is None or user_dia is None:
+        return jsonify({"error": "Missing systolic_bp or diastolic_bp"}), 400
+
+    # Add new reading to history
     new_row = pd.DataFrame([{
         'timestamp': datetime.now(),
         'systolic_bp': user_sys,
@@ -35,20 +38,27 @@ def bp_alert():
     }])
     bp_data = pd.concat([bp_data, new_row], ignore_index=True)
 
-    # Get last N rows
-    recent_data = bp_data.tail(WINDOW_SIZE)
-    mean_sys = recent_data['systolic_bp'].mean()
-    mean_dia = recent_data['diastolic_bp'].mean()
+    # Keep only the latest WINDOW_SIZE readings
+    bp_data = bp_data.tail(WINDOW_SIZE)
 
+    # Calculate mean for recent readings
+    mean_sys = bp_data['systolic_bp'].mean()
+    mean_dia = bp_data['diastolic_bp'].mean()
+
+    # Calculate deviations
     dev_sys = abs(user_sys - mean_sys) / (mean_sys + 1e-5)
     dev_dia = abs(user_dia - mean_dia) / (mean_dia + 1e-5)
 
+    # Generate alert if deviation exceeds threshold
     alert = dev_sys > THRESHOLD or dev_dia > THRESHOLD
 
     return jsonify({
         "mean_systolic": round(mean_sys, 2),
         "mean_diastolic": round(mean_dia, 2),
-        "systolic_deviation": round(dev_sys * 100, 2),
-        "diastolic_deviation": round(dev_dia * 100, 2),
+        "systolic_deviation_percent": round(dev_sys * 100, 2),
+        "diastolic_deviation_percent": round(dev_dia * 100, 2),
         "alert": alert
     })
+
+if __name__ == "__main__":
+    app.run(debug=True)
